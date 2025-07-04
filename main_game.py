@@ -1,9 +1,14 @@
+# Author: Justin Lindberg
+# Project name: Asteroid Alley
+# Version: 1.0
+# Date updated: 7/04/25
+
 import pygame
 import random
-import time
 import sys
  
 pygame.init()
+pygame.mixer.init()
 
 width, height = 400, 600
 scorebox_width, scorebox_height = 150, 50
@@ -13,6 +18,16 @@ font = pygame.font.SysFont("Impact", 35)
 menu_font = pygame.font.SysFont("Impact", 30)
 subtitle_font = pygame.font.SysFont("Arial", 20)
 clock = pygame.time.Clock()
+
+# Start music
+pygame.mixer.music.load("audio/8bit-music.mp3")
+pygame.mixer.music.set_volume(0.07)
+pygame.mixer.music.play(-1)
+
+# Load SFX
+death_sound = pygame.mixer.Sound("audio/death-sound.mp3")
+level_up = pygame.mixer.Sound("audio/8-bit-powerup.mp3")
+level_up.set_volume(0.4)
 
 # COLORS
 BLACK = (0, 0, 0)
@@ -82,6 +97,7 @@ def game_loop():
     frame_delay = 10
     frame_counter = 0
     score = 0
+    milestone = 0
     running = True
 
     # Main game loop
@@ -122,7 +138,12 @@ def game_loop():
             screen.blit(asteroid_frames[frame_index], (coord['x'], coord['y']))
             # Collision detection
             if hitbox.colliderect(asteroid_box):
+                death_sound.play()
                 running = False
+        
+        if score >= milestone:
+            level_up.play()
+            milestone += 100
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
