@@ -6,7 +6,9 @@
 import pygame
 import random
 import sys
- 
+import json
+import math
+
 pygame.init()
 pygame.mixer.init()
 
@@ -14,9 +16,9 @@ width, height = 400, 600
 scorebox_width, scorebox_height = 150, 50
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Asteroid Alley")
-font = pygame.font.SysFont("Impact", 35)
+big_font = pygame.font.SysFont("Impact", 35)
 menu_font = pygame.font.SysFont("Impact", 30)
-subtitle_font = pygame.font.SysFont("Arial", 20)
+subtitle_font = pygame.font.SysFont("Arial", 25)
 clock = pygame.time.Clock()
 
 # Start music
@@ -41,8 +43,20 @@ def main_menu():
     button_rect2 = pygame.Rect(width // 2 - 68, 402, start_width - 4, start_height - 4)
     galaxy = pygame.image.load('images/galaxy.png').convert()
     galaxy = pygame.transform.scale(galaxy, (galaxy.get_width() * 1.5, galaxy.get_height() * 1.5))
+    
+    # menu text
+    menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
+    with open("save-data.json", "r") as file:
+        data = json.load(file)
+    highscore_text = subtitle_font.render(f"High score: {data["highscore"]}", True, LIME)
+    highscore_pos = highscore_text.get_rect(bottomright=(width - 30, height - 30))
+    base_size = highscore_text.get_size()
+    font_amplitude = 0.07
+    font_speed = 0.05
+    frame = 0
 
     while True:
+        clock.tick(60)
         screen.fill(BLACK)
         mouse_pos = pygame.mouse.get_pos()
         click = False
@@ -51,12 +65,23 @@ def main_menu():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 click = True
-        # menu text
-        menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
+        
+        # Pulse font size
+        scale_factor = 1 + font_amplitude * math.sin(frame * font_speed)
+        new_size = (int(base_size[0] * scale_factor), int(base_size[1] * scale_factor))
+        scaled_highscore = pygame.transform.smoothscale(highscore_text, new_size)
+        scaled_pos = scaled_highscore.get_rect(center=highscore_pos.center)
+        frame += 1
+
         screen.blit(galaxy, (width // 2 - galaxy.get_width() // 2, height // 2 - galaxy.get_height() // 2))
         screen.blit(menu1, (width // 2 - menu1.get_width() // 2, 120))
+        screen.blit(scaled_highscore, scaled_pos)
+        
         # start button
         if button_rect.collidepoint(mouse_pos):
             pygame.draw.rect(screen, WHITE, button_rect)
@@ -172,12 +197,20 @@ def game_loop():
 
         pygame.display.flip()
 
+    # Save high score
+    with open("save-data.json", "r") as file:
+            data = json.load(file)
+    if score > data["highscore"]:
+        data["highscore"] = score
+    with open("save-data.json", "w") as file:
+        json.dump(data, file, indent=4)
+    
     # Game over screen
     waiting = True
     while waiting:
         screen.fill(LIME)
-        game_over = font.render("Game over!", True, BLACK)
-        score_result = font.render("Score: " + str(score), True, BLACK)
+        game_over = big_font.render("Game over!", True, BLACK)
+        score_result = big_font.render("Score: " + str(score), True, BLACK)
         game_over2 = subtitle_font.render("(Press 'Enter' to return to menu)", True, BLACK)
         screen.blit(game_over, (width // 2 - game_over.get_width() // 2, 100))
         screen.blit(score_result, (width // 2 - score_result.get_width() // 2, 180))
