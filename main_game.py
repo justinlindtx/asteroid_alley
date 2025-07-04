@@ -13,7 +13,7 @@ pygame.mixer.init()
 width, height = 400, 600
 scorebox_width, scorebox_height = 150, 50
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("My Game")
+pygame.display.set_caption("Asteroid Alley")
 font = pygame.font.SysFont("Impact", 35)
 menu_font = pygame.font.SysFont("Impact", 30)
 subtitle_font = pygame.font.SysFont("Arial", 20)
@@ -31,26 +31,46 @@ level_up.set_volume(0.4)
 
 # COLORS
 BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 LIME = (100, 240, 40)
+LIME_2 = (145, 245, 101)
 
 def main_menu():
+    start_width, start_height = 140, 55
+    button_rect = pygame.Rect(width // 2 - 70, 400, start_width, start_height)
+    button_rect2 = pygame.Rect(width // 2 - 68, 402, start_width - 4, start_height - 4)
+    galaxy = pygame.image.load('images/galaxy.png').convert()
+    galaxy = pygame.transform.scale(galaxy, (galaxy.get_width() * 1.5, galaxy.get_height() * 1.5))
+
     while True:
         screen.fill(BLACK)
-        galaxy = pygame.image.load('images/galaxy.png').convert()
-        galaxy = pygame.transform.scale(galaxy, (galaxy.get_width() * 1.5, galaxy.get_height() * 1.5))
-        menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
-        menu2 = menu_font.render("Press any key to start", True, LIME)
-        screen.blit(galaxy, (width // 2 - galaxy.get_width() // 2, height // 2 - galaxy.get_height() // 2))
-        screen.blit(menu1, (width // 2 - menu1.get_width() // 2, 120))
-        screen.blit(menu2, (width // 2 - menu2.get_width() // 2, 400))
-        pygame.display.flip()
-        
+        mouse_pos = pygame.mouse.get_pos()
+        click = False
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN:
-                return
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                click = True
+        # menu text
+        menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
+        screen.blit(galaxy, (width // 2 - galaxy.get_width() // 2, height // 2 - galaxy.get_height() // 2))
+        screen.blit(menu1, (width // 2 - menu1.get_width() // 2, 120))
+        # start button
+        if button_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, WHITE, button_rect)
+            pygame.draw.rect(screen, BLACK, button_rect2)
+            button_text = menu_font.render("Start", True, WHITE)
+            if click:
+                return # Start game when button is clicked
+        else:
+            pygame.draw.rect(screen, LIME, button_rect)
+            pygame.draw.rect(screen, BLACK, button_rect2)
+            button_text = menu_font.render("Start", True, LIME)
+        screen.blit(button_text, button_text.get_rect(center=button_rect.center))
+        
+        pygame.display.flip()
 
 def game_loop():
     # Background
@@ -149,6 +169,7 @@ def game_loop():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
         pygame.display.flip()
 
     # Game over screen
@@ -162,6 +183,7 @@ def game_loop():
         screen.blit(score_result, (width // 2 - score_result.get_width() // 2, 180))
         screen.blit(game_over2, (width // 2 - game_over2.get_width() // 2, 250))
         pygame.display.flip()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -169,7 +191,6 @@ def game_loop():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
                     waiting = False
-#end game_loop
 
 # Run the game
 while True:
