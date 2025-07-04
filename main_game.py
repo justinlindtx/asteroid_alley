@@ -21,10 +21,13 @@ LIME = (100, 240, 40)
 def main_menu():
     while True:
         screen.fill(BLACK)
+        galaxy = pygame.image.load('images/galaxy.png').convert()
+        galaxy = pygame.transform.scale(galaxy, (galaxy.get_width() * 1.5, galaxy.get_height() * 1.5))
         menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
         menu2 = menu_font.render("Press any key to start", True, LIME)
-        screen.blit(menu1, (width // 2 - menu1.get_width() // 2, height // 3))
-        screen.blit(menu2, (width // 2 - menu2.get_width() // 2, height // 2))
+        screen.blit(galaxy, (width // 2 - galaxy.get_width() // 2, height // 2 - galaxy.get_height() // 2))
+        screen.blit(menu1, (width // 2 - menu1.get_width() // 2, 120))
+        screen.blit(menu2, (width // 2 - menu2.get_width() // 2, 400))
         pygame.display.flip()
         
         for event in pygame.event.get():
@@ -35,6 +38,9 @@ def main_menu():
                 return
 
 def game_loop():
+    # Background
+    bg = pygame.image.load('images/background.png').convert()
+    
     # Player
     player = pygame.image.load('images/spaceship.png').convert_alpha()
     player = pygame.transform.scale(player, 
@@ -78,9 +84,11 @@ def game_loop():
     score = 0
     running = True
 
-    while running:
+    # Main game loop
+    while running: 
         clock.tick(60)
         screen.fill(BLACK)
+        screen.blit(bg, (0,0))
         screen.blit(player, (player_x, player_y))
 
         # Score box
