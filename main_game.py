@@ -18,12 +18,11 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Asteroid Alley")
 big_font = pygame.font.SysFont("Impact", 35)
 menu_font = pygame.font.SysFont("Impact", 30)
-subtitle_font = pygame.font.SysFont("Arial", 25)
 clock = pygame.time.Clock()
 
 # Start music
 pygame.mixer.music.load("audio/8bit-music.mp3")
-pygame.mixer.music.set_volume(0.07)
+pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
 # Load SFX
@@ -48,7 +47,8 @@ def main_menu():
     menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
     with open("save-data.json", "r") as file:
         data = json.load(file)
-    highscore_text = subtitle_font.render(f"High score: {data["highscore"]}", True, LIME)
+    score_font = pygame.font.SysFont("Consolas", 25)
+    highscore_text = score_font.render(f"High score: {data["highscore"]}", True, LIME)
     highscore_pos = highscore_text.get_rect(bottomright=(width - 30, height - 30))
     base_size = highscore_text.get_size()
     font_amplitude = 0.07
@@ -102,13 +102,15 @@ def game_loop():
     bg = pygame.image.load('images/background.png').convert()
     
     # Player
-    player = pygame.image.load('images/spaceship.png').convert_alpha()
+    player = pygame.image.load('images/spaceship.png').convert()
+    player.set_colorkey(BLACK)
     player = pygame.transform.scale(player, 
                                     (player.get_width() * 1.6, 
                                     player.get_height() * 1.6))
     player_x = width // 2 - player.get_width() // 2
     player_y = 500
     player_speed = 6
+    player_mask = pygame.mask.from_surface(player)
 
     # Asteroids
     asteroid_frames = [pygame.image.load("images/asteroid/asteroid1.png").convert(),
@@ -119,14 +121,15 @@ def game_loop():
                        pygame.image.load("images/asteroid/asteroid6.png").convert(),
                        pygame.image.load("images/asteroid/asteroid7.png").convert(),
                        pygame.image.load("images/asteroid/asteroid8.png").convert(),]
+    asteroid_masks = []
     for i in range(len(asteroid_frames)): # Rescale asteroid images
         image = asteroid_frames[i]
         image.set_colorkey(BLACK)
         scaled_image = pygame.transform.scale(image, (image.get_width() * 0.6, image.get_height() * 0.6))
         asteroid_frames[i] = scaled_image
+        asteroid_masks.append(pygame.mask.from_surface(asteroid_frames[i]))
 
     asteroid_width = asteroid_frames[0].get_width()
-    asteroid_height = asteroid_frames[0].get_height()
     asteroid_speed = 6
     num_asteroids = 4
     asteroids = [] # list of asteroid coords
@@ -172,22 +175,23 @@ def game_loop():
             frame_index = (frame_index + 1) % len(asteroid_frames)
         
         # Asteroid movement
-        hitbox = pygame.Rect(player_x, player_y, player.get_width(), player.get_height()) # update hitbox
-        for coord in asteroids:
+        for coord, mask in zip(asteroids, asteroid_masks):
             coord['y'] += asteroid_speed
             if coord['y'] > height:
                 score += 1
                 coord['x'] = random.randint(0, width - asteroid_width)
                 coord['y'] = random.randint(-(height), -50)
-            asteroid_box = pygame.Rect(coord['x'], coord['y'], asteroid_width, asteroid_height)
             screen.blit(asteroid_frames[frame_index], (coord['x'], coord['y']))
             # Collision detection
-            if hitbox.colliderect(asteroid_box):
+            offset = (coord['x'] - player_x, coord['y'] - player_y)
+            if player_mask.overlap(mask, offset):
+                pygame.display.flip()
                 death_sound.play()
                 running = False
         
         if score >= milestone:
             level_up.play()
+            pygame.mixer.music.set_volume(0.5)
             milestone += 100
 
         for event in pygame.event.get():
@@ -207,11 +211,15 @@ def game_loop():
     
     # Game over screen
     waiting = True
+    subtitle_font = pygame.font.SysFont("Consolas", 18)
+    gameover_bg = pygame.image.load("images/planet_stars.png").convert()
+    
     while waiting:
-        screen.fill(LIME)
-        game_over = big_font.render("Game over!", True, BLACK)
-        score_result = big_font.render("Score: " + str(score), True, BLACK)
-        game_over2 = subtitle_font.render("(Press 'Enter' to return to menu)", True, BLACK)
+        gameover_bg = pygame.transform.scale(gameover_bg, (width, height))
+        screen.blit(gameover_bg, (0,0))
+        game_over = big_font.render("Game over!", True, LIME)
+        score_result = big_font.render("Score: " + str(score), True, LIME)
+        game_over2 = subtitle_font.render("Press 'Enter' to return to menu", True, LIME)
         screen.blit(game_over, (width // 2 - game_over.get_width() // 2, 100))
         screen.blit(score_result, (width // 2 - score_result.get_width() // 2, 180))
         screen.blit(game_over2, (width // 2 - game_over2.get_width() // 2, 250))
