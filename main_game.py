@@ -16,7 +16,7 @@ width, height = 400, 600
 scorebox_width, scorebox_height = 150, 50
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Asteroid Alley")
-big_font = pygame.font.SysFont("Impact", 35)
+title_font = pygame.font.SysFont("Impact", 50)
 menu_font = pygame.font.SysFont("Impact", 30)
 clock = pygame.time.Clock()
 
@@ -27,14 +27,16 @@ pygame.mixer.music.play(-1)
 
 # Load SFX
 death_sound = pygame.mixer.Sound("audio/death-sound.mp3")
-level_up = pygame.mixer.Sound("audio/8-bit-powerup.mp3")
-level_up.set_volume(0.4)
+level_up = pygame.mixer.Sound("audio/level-up.mp3")
+gem_sound = pygame.mixer.Sound("audio/coin.mp3")
+gem_sound.set_volume(0.3)
 
 # COLORS
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+RED = (255, 0, 0)
 LIME = (100, 240, 40)
-LIME_2 = (145, 245, 101)
+#LIME_2 = (145, 245, 101)
 
 def main_menu():
     start_width, start_height = 140, 55
@@ -42,11 +44,15 @@ def main_menu():
     button_rect2 = pygame.Rect(width // 2 - 68, 402, start_width - 4, start_height - 4)
     galaxy = pygame.image.load('images/galaxy.png').convert()
     galaxy = pygame.transform.scale(galaxy, (galaxy.get_width() * 1.5, galaxy.get_height() * 1.5))
+    gem_icon = pygame.image.load('images/gem.png').convert()
+    gem_icon.set_colorkey(BLACK)
+    gem_icon = pygame.transform.scale(gem_icon, (35, 35))
     
     # menu text
-    menu1 = menu_font.render("Welcome to Asteroid Alley!", True, LIME)
+    game_title = title_font.render("Asteroid Alley", True, LIME)
     with open("save-data.json", "r") as file:
         data = json.load(file)
+    gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
     score_font = pygame.font.SysFont("Consolas", 25)
     highscore_text = score_font.render(f"High score: {data["highscore"]}", True, LIME)
     highscore_pos = highscore_text.get_rect(bottomright=(width - 30, height - 30))
@@ -79,9 +85,11 @@ def main_menu():
         frame += 1
 
         screen.blit(galaxy, (width // 2 - galaxy.get_width() // 2, height // 2 - galaxy.get_height() // 2))
-        screen.blit(menu1, (width // 2 - menu1.get_width() // 2, 120))
+        screen.blit(game_title, (width // 2 - game_title.get_width() // 2, 110))
         screen.blit(scaled_highscore, scaled_pos)
-        
+        screen.blit(gem_icon, (10, 10))
+        screen.blit(gem_text, (50, 20))
+
         # start button
         if button_rect.collidepoint(mouse_pos):
             pygame.draw.rect(screen, WHITE, button_rect)
@@ -137,8 +145,21 @@ def game_loop():
     # Initialize asteroid locations
     for i in range(num_asteroids):
         x = random.randint(0, width - asteroid_width)
+        snapped_x = (x // asteroid_width) * asteroid_width
         y = random.randint(-(height), -50)
-        asteroids.append({'x': x, 'y': y})
+        asteroids.append({'x': snapped_x, 'y': y})
+
+    # Gems and gem counter
+    gem = pygame.image.load('images/gem.png').convert()
+    gem.set_colorkey(BLACK)
+    gem = pygame.transform.scale(gem, (35, 35))
+    gem_mask = pygame.mask.from_surface(gem)
+    with open("save-data.json", "r") as file:
+        data = json.load(file)
+    gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
+    gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
+    gem_y = -30
+    gem_speed = 4
 
     # Initialize other variables
     frame_index = 0
@@ -146,6 +167,8 @@ def game_loop():
     frame_counter = 0
     score = 0
     milestone = 0
+    gem_time = pygame.time.get_ticks() + random.randint(5000, 10000) # 5-10 seconds
+    is_gem = False
     running = True
 
     # Main game loop
@@ -153,7 +176,8 @@ def game_loop():
         clock.tick(60)
         screen.fill(BLACK)
         screen.blit(bg, (0,0))
-        screen.blit(player, (player_x, player_y))
+        screen.blit(gem, (10, 10))
+        screen.blit(gem_text, (50, 20))
 
         # Score box
         pygame.draw.rect(screen, LIME, (width - scorebox_width - 10, 10, scorebox_width, scorebox_height)) #border
@@ -161,12 +185,36 @@ def game_loop():
         score_text = menu_font.render(f"Score: {score}", True, LIME)
         screen.blit(score_text, (width - scorebox_width, 18))
 
+        # Gems
+        now = pygame.time.get_ticks()
+        if now >= gem_time:
+            is_gem = True
+            gem_time = now + random.randint(5000, 10000)
+        if is_gem:
+            gem_y += gem_speed
+            screen.blit(gem, (gem_x, gem_y))
+            if gem_y > height:
+                gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
+                gem_y = -30
+                is_gem = False
+
         # Player movement
         key = pygame.key.get_pressed()
         if key[pygame.K_LEFT] and player_x > 0:
             player_x  -= player_speed
         if key[pygame.K_RIGHT] and player_x + player.get_width() < width:
             player_x += player_speed
+        screen.blit(player, (player_x, player_y))
+
+        # Check gem collision
+        offset = (gem_x - player_x, gem_y - player_y)
+        if player_mask.overlap(gem_mask, offset):
+            gem_sound.play()
+            data["gems"] += 1
+            gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
+            gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
+            gem_y = -30
+            is_gem = False
 
         # Asteroid animation
         frame_counter += 1
@@ -179,12 +227,12 @@ def game_loop():
             coord['y'] += asteroid_speed
             if coord['y'] > height:
                 score += 1
-                coord['x'] = random.randint(0, width - asteroid_width)
+                coord['x'] = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width
                 coord['y'] = random.randint(-(height), -50)
             screen.blit(asteroid_frames[frame_index], (coord['x'], coord['y']))
             # Collision detection
-            offset = (coord['x'] - player_x, coord['y'] - player_y)
-            if player_mask.overlap(mask, offset):
+            offset2 = (coord['x'] - player_x, coord['y'] - player_y)
+            if player_mask.overlap(mask, offset2):
                 pygame.display.flip()
                 death_sound.play()
                 running = False
@@ -201,9 +249,7 @@ def game_loop():
 
         pygame.display.flip()
 
-    # Save high score
-    with open("save-data.json", "r") as file:
-            data = json.load(file)
+    # Save game data
     if score > data["highscore"]:
         data["highscore"] = score
     with open("save-data.json", "w") as file:
@@ -213,6 +259,7 @@ def game_loop():
     waiting = True
     subtitle_font = pygame.font.SysFont("Consolas", 18)
     gameover_bg = pygame.image.load("images/planet_stars.png").convert()
+    big_font = pygame.font.SysFont("Impact", 35)
     
     while waiting:
         gameover_bg = pygame.transform.scale(gameover_bg, (width, height))
