@@ -28,6 +28,8 @@ pygame.mixer.music.play(-1)
 # Load SFX
 death_sound = pygame.mixer.Sound("audio/death-sound.mp3")
 level_up = pygame.mixer.Sound("audio/level-up.mp3")
+shield_sound = pygame.mixer.Sound("audio/shield-powerup.mp3")
+lose_shield = pygame.mixer.Sound("audio/8-bit-explosion.mp3")
 gem_sound = pygame.mixer.Sound("audio/coin.mp3")
 gem_sound.set_volume(0.3)
 
@@ -36,6 +38,7 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 LIME = (100, 240, 40)
+SKY = (50, 170, 255)
 #LIME_2 = (145, 245, 101)
 
 def main_menu():
@@ -128,7 +131,7 @@ def game_loop():
                        pygame.image.load("images/asteroid/asteroid5.png").convert(),
                        pygame.image.load("images/asteroid/asteroid6.png").convert(),
                        pygame.image.load("images/asteroid/asteroid7.png").convert(),
-                       pygame.image.load("images/asteroid/asteroid8.png").convert(),]
+                       pygame.image.load("images/asteroid/asteroid8.png").convert()]
     asteroid_masks = []
     for i in range(len(asteroid_frames)): # Rescale asteroid images
         image = asteroid_frames[i]
@@ -161,14 +164,35 @@ def game_loop():
     gem_y = -30
     gem_speed = 4
 
+    # Shield powerups
+    shield_frames = [pygame.image.load('images/shield/shield1.png').convert(),
+                     pygame.image.load('images/shield/shield2.png').convert(),
+                     pygame.image.load('images/shield/shield3.png').convert(),
+                     pygame.image.load('images/shield/shield4.png').convert()]
+    shield_masks = []
+    for i in range(len(shield_frames)): # Rescale shield images
+        image = shield_frames[i]
+        image.set_colorkey(BLACK)
+        shield_width = 40
+        scaled_image = pygame.transform.scale(image, (shield_width, shield_width))
+        shield_frames[i] = scaled_image
+        shield_masks.append(pygame.mask.from_surface(shield_frames[i]))
+    shield_speed = 4
+    shield_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 30
+    shield_y = -70
+
     # Initialize other variables
-    frame_index = 0
-    frame_delay = 10
+    asteroid_frame_index = 0
+    shield_frame_index = 0
+    frame_delay1 = 10
     frame_counter = 0
     score = 0
     milestone = 0
+    num_shields = 0
     gem_time = pygame.time.get_ticks() + random.randint(5000, 10000) # 5-10 seconds
+    shield_time = pygame.time.get_ticks() + random.randint(5000, 10000) # 20-30 seconds
     is_gem = False
+    is_shield = False
     running = True
 
     # Main game loop
@@ -176,14 +200,13 @@ def game_loop():
         clock.tick(60)
         screen.fill(BLACK)
         screen.blit(bg, (0,0))
-        screen.blit(gem, (10, 10))
-        screen.blit(gem_text, (50, 20))
 
-        # Score box
-        pygame.draw.rect(screen, LIME, (width - scorebox_width - 10, 10, scorebox_width, scorebox_height)) #border
-        pygame.draw.rect(screen, BLACK, (width - scorebox_width - 8, 12, scorebox_width - 4, scorebox_height - 4))
-        score_text = menu_font.render(f"Score: {score}", True, LIME)
-        screen.blit(score_text, (width - scorebox_width, 18))
+        # Animations
+        frame_counter += 1
+        if frame_counter >= frame_delay1:
+            frame_counter = 0
+            asteroid_frame_index = (asteroid_frame_index + 1) % len(asteroid_frames)
+            shield_frame_index = (shield_frame_index + 1) % len(shield_frames)
 
         # Gems
         now = pygame.time.get_ticks()
@@ -198,6 +221,18 @@ def game_loop():
                 gem_y = -30
                 is_gem = False
 
+        # Shields
+        now = pygame.time.get_ticks()
+        if now >= shield_time:
+            is_shield = True
+            shield_time = now + random.randint(5000, 10000)
+        if is_shield:
+            shield_y += shield_speed
+            screen.blit(shield_frames[shield_frame_index], (shield_x, shield_y))
+            if shield_y > height:
+                shield_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 30
+                shield_y = -70
+
         # Player movement
         key = pygame.key.get_pressed()
         if key[pygame.K_LEFT] and player_x > 0:
@@ -205,22 +240,37 @@ def game_loop():
         if key[pygame.K_RIGHT] and player_x + player.get_width() < width:
             player_x += player_speed
         screen.blit(player, (player_x, player_y))
+        
+        # Draw shield around player
+        if num_shields > 0:
+            circle_radius = 30
+            circle_color = (50, 170, 255, 64) # 64 means 25% transparency
+            circle_surface = pygame.Surface((circle_radius * 2, circle_radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(circle_surface, circle_color, (circle_radius, circle_radius), circle_radius)
+            player_pos = player.get_rect(topleft=(player_x, player_y))
+            circle_pos = (player_pos.centerx - circle_radius, player_pos.centery - circle_radius)
+            screen.blit(circle_surface, circle_pos)
 
         # Check gem collision
-        offset = (gem_x - player_x, gem_y - player_y)
-        if player_mask.overlap(gem_mask, offset):
+        gem_offset = (gem_x - player_x, gem_y - player_y)
+        if player_mask.overlap(gem_mask, gem_offset):
             gem_sound.play()
+            pygame.mixer.music.set_volume(0.5)
             data["gems"] += 1
             gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
             gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
             gem_y = -30
             is_gem = False
 
-        # Asteroid animation
-        frame_counter += 1
-        if frame_counter >= frame_delay:
-            frame_counter = 0
-            frame_index = (frame_index + 1) % len(asteroid_frames)
+        # Check shield collision
+        shield_offset = (shield_x - player_x, shield_y - player_y)
+        if player_mask.overlap(shield_masks[shield_frame_index], shield_offset):
+            shield_sound.play()
+            pygame.mixer.music.set_volume(0.5)
+            shield_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 30
+            shield_y = -70
+            is_shield = False
+            num_shields += 1
         
         # Asteroid movement
         for coord, mask in zip(asteroids, asteroid_masks):
@@ -229,24 +279,45 @@ def game_loop():
                 score += 1
                 coord['x'] = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width
                 coord['y'] = random.randint(-(height), -50)
-            screen.blit(asteroid_frames[frame_index], (coord['x'], coord['y']))
-            # Collision detection
-            offset2 = (coord['x'] - player_x, coord['y'] - player_y)
-            if player_mask.overlap(mask, offset2):
-                pygame.display.flip()
-                death_sound.play()
-                running = False
+            screen.blit(asteroid_frames[asteroid_frame_index], (coord['x'], coord['y']))
+            # Check asteroid collision
+            asteroid_offset = (coord['x'] - player_x, coord['y'] - player_y)
+            if player_mask.overlap(mask, asteroid_offset):
+                if num_shields > 0:
+                    num_shields -= 1
+                    lose_shield.play()
+                    pygame.mixer.music.set_volume(0.5)
+                    coord['x'] = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width
+                    coord['y'] = random.randint(-(height), -50)
+                else:
+                    pygame.display.flip()
+                    death_sound.play()
+                    pygame.mixer.music.set_volume(0.5)
+                    running = False
         
         if score >= milestone:
             level_up.play()
             pygame.mixer.music.set_volume(0.5)
             milestone += 100
 
+        # Score box
+        pygame.draw.rect(screen, LIME, (width - scorebox_width - 10, 10, scorebox_width, scorebox_height)) #border
+        pygame.draw.rect(screen, BLACK, (width - scorebox_width - 8, 12, scorebox_width - 4, scorebox_height - 4))
+        score_text = menu_font.render(f"Score: {score}", True, LIME)
+        screen.blit(score_text, (width - scorebox_width, 18))
+        # Gem display
+        screen.blit(gem, (10, 10))
+        screen.blit(gem_text, (50, 20))
+        # Shield display
+        for i in range(num_shields):
+            pygame.draw.rect(screen, SKY, (15 + 30*i, height - 40, 15, 30))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
+        
+        
         pygame.display.flip()
 
     # Save game data
