@@ -1,7 +1,7 @@
 # Author: Justin Lindberg
 # Project name: Asteroid Alley
 # Version: 1.0
-# Date updated: 7/04/25
+# Date updated: 7/05/25
 
 import pygame
 import random
@@ -13,7 +13,7 @@ pygame.init()
 pygame.mixer.init()
 
 width, height = 400, 600
-scorebox_width, scorebox_height = 150, 50
+scorebox_width, scorebox_height = 155, 50
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Asteroid Alley")
 title_font = pygame.font.SysFont("Impact", 50)
@@ -142,7 +142,7 @@ def game_loop():
 
     asteroid_width = asteroid_frames[0].get_width()
     asteroid_speed = 6
-    num_asteroids = 4
+    num_asteroids = 5
     asteroids = [] # list of asteroid coords
 
     # Initialize asteroid locations
@@ -150,6 +150,9 @@ def game_loop():
         x = random.randint(0, width - asteroid_width)
         snapped_x = (x // asteroid_width) * asteroid_width
         y = random.randint(-(height), -50)
+        for other_coord in asteroids:
+            if snapped_x == other_coord['x'] and abs(y - other_coord['y']) < 100:
+                y -= 200
         asteroids.append({'x': snapped_x, 'y': y})
 
     # Gems and gem counter
@@ -181,6 +184,11 @@ def game_loop():
     shield_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 30
     shield_y = -70
 
+    # Background scrolling
+    scroll_speed = 1
+    bg_y1 = 0
+    bg_y2 = -height
+
     # Initialize other variables
     asteroid_frame_index = 0
     shield_frame_index = 0
@@ -189,8 +197,8 @@ def game_loop():
     score = 0
     milestone = 0
     num_shields = 0
-    gem_time = pygame.time.get_ticks() + random.randint(5000, 10000) # 5-10 seconds
-    shield_time = pygame.time.get_ticks() + random.randint(5000, 10000) # 20-30 seconds
+    gem_time = pygame.time.get_ticks() + random.randint(10000, 15000) # 10-15 seconds
+    shield_time = pygame.time.get_ticks() + random.randint(40000, 70000) # 40-70 seconds
     is_gem = False
     is_shield = False
     running = True
@@ -199,7 +207,16 @@ def game_loop():
     while running: 
         clock.tick(60)
         screen.fill(BLACK)
-        screen.blit(bg, (0,0))
+
+        # Move background
+        bg_y1 += scroll_speed
+        bg_y2 += scroll_speed
+        if bg_y1 > height:
+            bg_y1 = -height
+        if bg_y2 > height:
+            bg_y2 = -height
+        screen.blit(bg, (0, bg_y1))
+        screen.blit(bg, (0, bg_y2))
 
         # Animations
         frame_counter += 1
@@ -212,7 +229,7 @@ def game_loop():
         now = pygame.time.get_ticks()
         if now >= gem_time:
             is_gem = True
-            gem_time = now + random.randint(5000, 10000)
+            gem_time = now + random.randint(10000, 20000)
         if is_gem:
             gem_y += gem_speed
             screen.blit(gem, (gem_x, gem_y))
@@ -220,18 +237,21 @@ def game_loop():
                 gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
                 gem_y = -30
                 is_gem = False
+                gem_time = now + random.randint(10000, 20000)
 
         # Shields
         now = pygame.time.get_ticks()
         if now >= shield_time:
             is_shield = True
-            shield_time = now + random.randint(5000, 10000)
+            shield_time = now + random.randint(40000, 70000)
         if is_shield:
             shield_y += shield_speed
             screen.blit(shield_frames[shield_frame_index], (shield_x, shield_y))
             if shield_y > height:
                 shield_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 30
                 shield_y = -70
+                is_shield = False
+                shield_time = now + random.randint(40000, 70000)
 
         # Player movement
         key = pygame.key.get_pressed()
@@ -275,12 +295,18 @@ def game_loop():
         # Asteroid movement
         for coord, mask in zip(asteroids, asteroid_masks):
             coord['y'] += asteroid_speed
-            if coord['y'] > height:
+            if coord['y'] > height: # reset asteroid position
                 score += 1
                 coord['x'] = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width
                 coord['y'] = random.randint(-(height), -50)
+                # Adjust position if overlap occurs
+                for other_coord in asteroids:
+                    if coord is other_coord:
+                        continue
+                    if coord['x'] == other_coord['x'] and abs(coord['y'] - other_coord['y']) < 100:
+                        coord['y'] -= 200
             screen.blit(asteroid_frames[asteroid_frame_index], (coord['x'], coord['y']))
-            # Check asteroid collision
+            # Check asteroid collision with player
             asteroid_offset = (coord['x'] - player_x, coord['y'] - player_y)
             if player_mask.overlap(mask, asteroid_offset):
                 if num_shields > 0:
@@ -301,13 +327,15 @@ def game_loop():
             milestone += 100
 
         # Score box
-        pygame.draw.rect(screen, LIME, (width - scorebox_width - 10, 10, scorebox_width, scorebox_height)) #border
-        pygame.draw.rect(screen, BLACK, (width - scorebox_width - 8, 12, scorebox_width - 4, scorebox_height - 4))
+        pygame.draw.rect(screen, LIME, (width - scorebox_width - 14, 10, scorebox_width, scorebox_height)) #border
+        pygame.draw.rect(screen, BLACK, (width - scorebox_width - 12, 12, scorebox_width - 4, scorebox_height - 4))
         score_text = menu_font.render(f"Score: {score}", True, LIME)
-        screen.blit(score_text, (width - scorebox_width, 18))
+        screen.blit(score_text, (width - scorebox_width - 8, 18))
+
         # Gem display
         screen.blit(gem, (10, 10))
         screen.blit(gem_text, (50, 20))
+
         # Shield display
         for i in range(num_shields):
             pygame.draw.rect(screen, SKY, (15 + 30*i, height - 40, 15, 30))
