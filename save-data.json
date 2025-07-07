@@ -1,12 +1,12 @@
 {
-    "highscore": 45,
-    "gems": 36,
+    "highscore": 391,
+    "gems": 14,
     "spaceships": [
         {
             "name": "SCF-13 Vanguard",
             "filename": "images/spaceship.png",
             "unlocked": true,
-            "selected": true,
+            "selected": false,
             "cost": 0
         },
         {

@@ -1,7 +1,7 @@
 # Author: Justin Lindberg
 # Project name: Asteroid Alley
 # Version: 1.0
-# Date updated: 7/05/25
+# Date updated: 7/07/25
 
 import pygame
 import random
@@ -132,6 +132,9 @@ def main_menu():
         pygame.display.flip()
 
 def play_game():
+    level_up.play()
+    pygame.mixer.music.set_volume(0.5)
+    
     # Load save data
     with open("save-data.json", "r") as file:
         data = json.load(file)
@@ -223,7 +226,10 @@ def play_game():
     frame_delay1 = 10
     frame_counter = 0
     score = 0
-    milestone = 0
+    score_box_color = LIME
+    flashing = False
+    channel = None
+    milestone = 100
     num_shields = 0
     gem_time = pygame.time.get_ticks() + random.randint(10000, 15000) # 10-15 seconds
     shield_time = pygame.time.get_ticks() + random.randint(40000, 70000) # 40-70 seconds
@@ -252,6 +258,8 @@ def play_game():
             frame_counter = 0
             asteroid_frame_index = (asteroid_frame_index + 1) % len(asteroid_frames)
             shield_frame_index = (shield_frame_index + 1) % len(shield_frames)
+            if flashing:
+                score_box_color = WHITE if score_box_color == LIME else LIME
 
         # Gems
         now = pygame.time.get_ticks()
@@ -349,15 +357,21 @@ def play_game():
                     pygame.mixer.music.set_volume(0.5)
                     running = False
         
-        if score >= milestone:
-            level_up.play()
+        # Milestone reached
+        if score == milestone:
+            channel = level_up.play()
             pygame.mixer.music.set_volume(0.5)
             milestone += 100
-
+        if channel is not None and channel.get_busy():
+            flashing = True
+        else:
+            flashing = False
+            score_box_color = LIME
+        
         # Score box
-        pygame.draw.rect(screen, LIME, (width - scorebox_width - 14, 10, scorebox_width, scorebox_height)) #border
+        pygame.draw.rect(screen, score_box_color, (width - scorebox_width - 14, 10, scorebox_width, scorebox_height)) #border
         pygame.draw.rect(screen, BLACK, (width - scorebox_width - 12, 12, scorebox_width - 4, scorebox_height - 4))
-        score_text = menu_font.render(f"Score: {score}", True, LIME)
+        score_text = menu_font.render(f"Score: {score}", True, score_box_color)
         screen.blit(score_text, (width - scorebox_width - 8, 18))
 
         # Gem display
