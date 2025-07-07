@@ -1,4 +1,48 @@
 {
-    "highscore": 0,
-    "gems": 0
+    "highscore": 45,
+    "gems": 36,
+    "spaceships": [
+        {
+            "name": "SCF-13 Vanguard",
+            "filename": "images/spaceship.png",
+            "unlocked": true,
+            "selected": true,
+            "cost": 0
+        },
+        {
+            "name": "Cargo Freighter",
+            "filename": "images/spaceship2.png",
+            "unlocked": true,
+            "selected": true,
+            "cost": 50
+        },
+        {
+            "name": "Red Phantom",
+            "filename": "images/spaceship3.png",
+            "unlocked": false,
+            "selected": false,
+            "cost": 100
+        },
+        {
+            "name": "Dorito of Doom",
+            "filename": "images/spaceship4.png",
+            "unlocked": false,
+            "selected": false,
+            "cost": 150
+        },
+        {
+            "name": "The Abductor",
+            "filename": "images/spaceship5.png",
+            "unlocked": false,
+            "selected": false,
+            "cost": 200
+        },
+        {
+            "name": "Eagle One",
+            "filename": "images/spaceship6.png",
+            "unlocked": false,
+            "selected": false,
+            "cost": 300
+        }
+    ]
 }

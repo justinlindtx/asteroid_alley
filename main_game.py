@@ -31,6 +31,7 @@ level_up = pygame.mixer.Sound("audio/level-up.mp3")
 shield_sound = pygame.mixer.Sound("audio/shield-powerup.mp3")
 lose_shield = pygame.mixer.Sound("audio/8-bit-explosion.mp3")
 gem_sound = pygame.mixer.Sound("audio/coin.mp3")
+select_sound = pygame.mixer.Sound('audio/collect-item.mp3')
 gem_sound.set_volume(0.3)
 
 # COLORS
@@ -43,8 +44,11 @@ SKY = (50, 170, 255)
 
 def main_menu():
     start_width, start_height = 140, 55
-    button_rect = pygame.Rect(width // 2 - 70, 400, start_width, start_height)
-    button_rect2 = pygame.Rect(width // 2 - 68, 402, start_width - 4, start_height - 4)
+    start_button_rect = pygame.Rect(width // 2 - 70, 360, start_width, start_height)
+    start_button_rect2 = pygame.Rect(width // 2 - 68, 362, start_width - 4, start_height - 4)
+    shop_button_rect = pygame.Rect(width // 2 - 70, 430, start_width, start_height)
+    shop_button_rect2 = pygame.Rect(width // 2 - 68, 432, start_width - 4, start_height - 4)
+    menu_font_selected = pygame.font.SysFont("Impact", 26)
     galaxy = pygame.image.load('images/galaxy.png').convert()
     galaxy = pygame.transform.scale(galaxy, (galaxy.get_width() * 1.5, galaxy.get_height() * 1.5))
     gem_icon = pygame.image.load('images/gem.png').convert()
@@ -55,7 +59,7 @@ def main_menu():
     game_title = title_font.render("Asteroid Alley", True, LIME)
     with open("save-data.json", "r") as file:
         data = json.load(file)
-    gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
+    gem_text = pygame.font.SysFont("Consolas", 25).render(str(data["gems"]), True, RED)
     score_font = pygame.font.SysFont("Consolas", 25)
     highscore_text = score_font.render(f"High score: {data["highscore"]}", True, LIME)
     highscore_pos = highscore_text.get_rect(bottomright=(width - 30, height - 30))
@@ -91,31 +95,57 @@ def main_menu():
         screen.blit(game_title, (width // 2 - game_title.get_width() // 2, 110))
         screen.blit(scaled_highscore, scaled_pos)
         screen.blit(gem_icon, (10, 10))
-        screen.blit(gem_text, (50, 20))
+        screen.blit(gem_text, (50, 18))
 
         # start button
-        if button_rect.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, WHITE, button_rect)
-            pygame.draw.rect(screen, BLACK, button_rect2)
-            button_text = menu_font.render("Start", True, WHITE)
+        if start_button_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, WHITE, start_button_rect)
+            pygame.draw.rect(screen, BLACK, start_button_rect2)
+            button_text = menu_font_selected.render("Start", True, WHITE)
             if click:
                 return # Start game when button is clicked
         else:
-            pygame.draw.rect(screen, LIME, button_rect)
-            pygame.draw.rect(screen, BLACK, button_rect2)
+            pygame.draw.rect(screen, LIME, start_button_rect)
+            pygame.draw.rect(screen, BLACK, start_button_rect2)
             button_text = menu_font.render("Start", True, LIME)
-        screen.blit(button_text, button_text.get_rect(center=button_rect.center))
+        screen.blit(button_text, button_text.get_rect(center=start_button_rect.center))
+
+        # Shop button
+        if shop_button_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, WHITE, shop_button_rect)
+            pygame.draw.rect(screen, BLACK, shop_button_rect2)
+            button_text = menu_font_selected.render("Shop", True, WHITE)
+            if click:
+                select_sound.play()
+                pygame.mixer.music.set_volume(0.5)
+                shop_screen() # Go to shop when button is clicked
+                # Update gem count when returning from shop
+                with open("save-data.json", "r") as file:
+                    data = json.load(file)
+                gem_text = pygame.font.SysFont("Consolas", 25).render(str(data["gems"]), True, RED)
+        else:
+            pygame.draw.rect(screen, LIME, shop_button_rect)
+            pygame.draw.rect(screen, BLACK, shop_button_rect2)
+            button_text = menu_font.render("Shop", True, LIME)
+        screen.blit(button_text, button_text.get_rect(center=shop_button_rect.center))
         
         pygame.display.flip()
 
-def game_loop():
+def play_game():
+    # Load save data
+    with open("save-data.json", "r") as file:
+        data = json.load(file)
+    
     # Background
     bg = pygame.image.load('images/background.png').convert()
     
     # Player
-    player = pygame.image.load('images/spaceship.png').convert()
+    for ship in data["spaceships"]:
+        if ship["selected"] == True:
+            player_image = ship["filename"]
+    player = pygame.image.load(player_image).convert()
     player.set_colorkey(BLACK)
-    player = pygame.transform.scale(player, 
+    player = pygame.transform.scale(player,
                                     (player.get_width() * 1.6, 
                                     player.get_height() * 1.6))
     player_x = width // 2 - player.get_width() // 2
@@ -160,9 +190,7 @@ def game_loop():
     gem.set_colorkey(BLACK)
     gem = pygame.transform.scale(gem, (35, 35))
     gem_mask = pygame.mask.from_surface(gem)
-    with open("save-data.json", "r") as file:
-        data = json.load(file)
-    gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
+    gem_text = pygame.font.SysFont("Consolas", 25).render(str(data["gems"]), True, RED)
     gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
     gem_y = -30
     gem_speed = 4
@@ -277,7 +305,7 @@ def game_loop():
             gem_sound.play()
             pygame.mixer.music.set_volume(0.5)
             data["gems"] += 1
-            gem_text = pygame.font.SysFont("Consolas", 20).render(str(data["gems"]), True, RED)
+            gem_text = pygame.font.SysFont("Consolas", 25).render(str(data["gems"]), True, RED)
             gem_x = (random.randint(0, width - asteroid_width) // asteroid_width) * asteroid_width + 40
             gem_y = -30
             is_gem = False
@@ -334,7 +362,7 @@ def game_loop():
 
         # Gem display
         screen.blit(gem, (10, 10))
-        screen.blit(gem_text, (50, 20))
+        screen.blit(gem_text, (50, 18))
 
         # Shield display
         for i in range(num_shields):
@@ -379,7 +407,164 @@ def game_loop():
                 if event.key == pygame.K_RETURN:
                     waiting = False
 
+def shop_screen():
+    bg = pygame.image.load('images/background.png').convert()
+    gem_icon = pygame.image.load('images/gem.png').convert()
+    gem_icon.set_colorkey(BLACK)
+    gem_icon = pygame.transform.scale(gem_icon, (35, 35))
+    shop_font = pygame.font.SysFont("Impact", 25)
+    shop_font_selected = pygame.font.SysFont("Impact", 22)
+    back_width, back_height = 85, 50
+    back_button_rect = pygame.Rect(10, 10, back_width, back_height)
+    back_button_rect2 = pygame.Rect(12, 12, back_width - 4, back_height - 4)
+    buy_sound = pygame.mixer.Sound('audio/buy-item.mp3')
+    with open("save-data.json", "r") as file:
+        data = json.load(file)
+    
+    # Load ship images
+    ship_images = []
+    for ship in data["spaceships"]:
+        tmp_image = pygame.image.load(ship["filename"]).convert()
+        tmp_image.set_colorkey(BLACK)
+        tmp_image = pygame.transform.scale(tmp_image,
+                                    (tmp_image.get_width() * 1.4, 
+                                    tmp_image.get_height() * 1.4))
+        ship_images.append(tmp_image)
+    # Load images for locked ships
+    lock_image = pygame.image.load("images/locked.png").convert()
+    lock_image.set_colorkey(BLACK)
+    lock_image = pygame.transform.scale(lock_image, (lock_image.get_width() * 1.3, lock_image.get_height() * 1.3))
+    buy_button_image = pygame.image.load('images/buy-ship-button.png').convert_alpha()
+    buy_button_image = pygame.transform.scale(buy_button_image, (buy_button_image.get_width() * 3.2, buy_button_image.get_height() * 3.2))
+    buy_button_rect = buy_button_image.get_rect(topleft=(width // 2 - buy_button_image.get_width() // 2, 500))
+
+    # Find selected ship
+    for i, ship in enumerate(data["spaceships"]):
+        if ship["selected"] == True:
+            ship_selected_index = i
+    ship_looking_index = ship_selected_index
+
+    # Background scrolling
+    scroll_speed = 1
+    bg_x1 = 0
+    bg_x2 = -width
+    
+    while True:
+        clock.tick(60)
+        screen.fill(BLACK)
+        mouse_pos = pygame.mouse.get_pos()
+        click = False
+        gem_text = pygame.font.SysFont("Consolas", 25).render(str(data["gems"]), True, RED)
+        
+        # Move background
+        bg_x1 += scroll_speed
+        bg_x2 += scroll_speed
+        if bg_x1 > width:
+            bg_x1 = -width
+        if bg_x2 > width:
+            bg_x2 = -width
+        screen.blit(bg, (bg_x1, 0))
+        screen.blit(bg, (bg_x2, 0))
+
+        screen.blit(gem_icon, (110, 18))
+        screen.blit(gem_text, (150, 26))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                click = True
+        
+        # Draw ships on grid
+        start_x, start_y = 65, 220
+        gap = 100
+        buy_button_y = 500
+        for i, ship in enumerate(data["spaceships"][:6]):
+            box_size = 70
+            col = i % 3
+            row = i // 3
+            x = start_x + gap * col
+            y = start_y + gap * row
+            if i == ship_selected_index:
+                x -= 3
+                y -= 3
+                box_size += 6
+            if i == ship_looking_index:
+                ship_text = pygame.font.SysFont("Consolas", 22).render(str(ship["name"]), True, LIME)
+            rect = pygame.Rect(x, y, box_size, box_size)
+            # Detect mouse selections
+            if rect.collidepoint(mouse_pos) or i == ship_looking_index:
+                pygame.draw.rect(screen, WHITE, rect)
+                if click and ship["unlocked"] == True: # change selected ship
+                    data["spaceships"][ship_selected_index]["selected"] = False
+                    data["spaceships"][i]["selected"] = True
+                    ship_selected_index = i
+                    ship_looking_index = i
+                elif click:
+                    ship_looking_index = i
+            else:
+                pygame.draw.rect(screen, LIME, rect)
+            if i == ship_selected_index:
+                pygame.draw.rect(screen, BLACK, (x + 6, y + 6, box_size - 12, box_size - 12))
+            else:
+                pygame.draw.rect(screen, BLACK, (x + 3, y + 3, box_size - 6, box_size - 6))
+            image_rect = ship_images[i].get_rect(center=rect.center)
+            screen.blit(ship_images[i], image_rect)
+
+            # Display images for locked ships
+            if ship["unlocked"] == False:
+                screen.blit(lock_image, image_rect)
+            if i == ship_looking_index and ship["unlocked"] == False:
+                if buy_button_rect.collidepoint(mouse_pos):
+                    buy_button_y += 2
+                    screen.blit(buy_button_image, (width // 2 - buy_button_image.get_width() // 2, buy_button_y))
+                    buy_text = pygame.font.SysFont("Consolas", 24).render("Buy", True, RED)
+                    # Buying the ship
+                    if click and data["gems"] >= ship["cost"]:
+                        buy_sound.play()
+                        pygame.mixer.music.set_volume(0.5)
+                        data["gems"] -= ship["cost"]
+                        data["spaceships"][i]["unlocked"] = True
+                        data["spaceships"][i]["selected"] = True
+                        ship_selected_index = i
+                else:
+                    screen.blit(buy_button_image, buy_button_rect)
+                    buy_text = pygame.font.SysFont("Consolas", 24).render("Buy", True, BLACK)
+                screen.blit(buy_text, (140, buy_button_y + 8))
+                screen.blit(gem_icon, (180, buy_button_y))
+                cost_text = pygame.font.SysFont("Consolas", 24).render(str(ship["cost"]), True, RED)
+                screen.blit(cost_text, (215, buy_button_y + 8))
+
+            # Play sounds
+            if rect.collidepoint(mouse_pos) and click:
+                select_sound.play()
+                pygame.mixer.music.set_volume(0.5)
+
+
+        screen.blit(ship_text, (width // 2 - ship_text.get_width() // 2, 455))
+
+        # Back button
+        if back_button_rect.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, WHITE, back_button_rect)
+            pygame.draw.rect(screen, BLACK, back_button_rect2)
+            button_text = shop_font_selected.render("Back", True, WHITE)
+            if click:
+                select_sound.play()
+                pygame.mixer.music.set_volume(0.5)
+                # Write save data back to file
+                with open("save-data.json", "w") as file:
+                    json.dump(data, file, indent=4)
+                return # Return to main menu
+        else:
+            pygame.draw.rect(screen, LIME, back_button_rect)
+            pygame.draw.rect(screen, BLACK, back_button_rect2)
+            button_text = shop_font.render("Back", True, LIME)
+        screen.blit(button_text, button_text.get_rect(center=back_button_rect.center))
+
+        pygame.display.flip()
+
 # Run the game
 while True:
     main_menu()
-    game_loop()
+    play_game()
