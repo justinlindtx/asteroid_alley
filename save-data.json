@@ -1,19 +1,19 @@
 {
-    "highscore": 391,
-    "gems": 14,
+    "highscore": 0,
+    "gems": 0,
     "spaceships": [
         {
             "name": "SCF-13 Vanguard",
             "filename": "images/spaceship.png",
             "unlocked": true,
-            "selected": false,
+            "selected": true,
             "cost": 0
         },
         {
             "name": "Cargo Freighter",
             "filename": "images/spaceship2.png",
-            "unlocked": true,
-            "selected": true,
+            "unlocked": false,
+            "selected": false,
             "cost": 50
         },
         {

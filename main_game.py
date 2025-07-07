@@ -1,7 +1,20 @@
-# Author: Justin Lindberg
-# Project name: Asteroid Alley
-# Version: 1.0
-# Date updated: 7/07/25
+"""
+Project Name: Asteroid Alley
+Author: Justin Lindberg
+Version: 1.0
+Date updated: July 7, 2025
+Description: A 2D arcade-style space game built with Pygame. Players dodge asteroids, collect gems,
+and unlock ships from a shop menu using in-game currency.
+
+Dependencies:
+- pygame (see requirements.txt)
+
+Usage:
+- Run with: python main_game.py
+- Press enter to start (or click the start button)
+- Use arrow keys to move left and right
+- Navigate menus with mouse clicks
+"""
 
 import pygame
 import random
@@ -32,6 +45,7 @@ shield_sound = pygame.mixer.Sound("audio/shield-powerup.mp3")
 lose_shield = pygame.mixer.Sound("audio/8-bit-explosion.mp3")
 gem_sound = pygame.mixer.Sound("audio/coin.mp3")
 select_sound = pygame.mixer.Sound('audio/collect-item.mp3')
+fail_sound = pygame.mixer.Sound("audio/retro-hurt.mp3")
 gem_sound.set_volume(0.3)
 
 # COLORS
@@ -40,7 +54,6 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 LIME = (100, 240, 40)
 SKY = (50, 170, 255)
-#LIME_2 = (145, 245, 101)
 
 def main_menu():
     start_width, start_height = 140, 55
@@ -542,6 +555,9 @@ def shop_screen():
                         data["spaceships"][i]["unlocked"] = True
                         data["spaceships"][i]["selected"] = True
                         ship_selected_index = i
+                    elif click:
+                        fail_sound.play()
+                        pygame.mixer.music.set_volume(0.5)
                 else:
                     screen.blit(buy_button_image, buy_button_rect)
                     buy_text = pygame.font.SysFont("Consolas", 24).render("Buy", True, BLACK)
